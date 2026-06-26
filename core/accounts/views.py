@@ -12,16 +12,20 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import viewsets
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.decorators import action as Action
 
 #models
-from .models import OTP
+from .models import OTP,SocialLink,ContactInfo
 from .serializers import (
     SendOTPSerializer,
     VerifyOTPSerializer,
-    UserSerializer
+    UserSerializer,
+    SocialLinkSerializer,
+    ContactInfoSerializer
 )
 from cart.models import Cart
 from .sms import send_otp
@@ -88,9 +92,15 @@ class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = VerifyOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        otp = serializer.validated_data['otp']
+        serializer = VerifyOTPSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        otp = serializer.validated_data["otp"]
 
         otp.is_verified = True
         otp.save(update_fields=["is_verified"])
@@ -100,30 +110,72 @@ class VerifyOTPView(APIView):
             defaults={"is_active": True}
         )
 
-        # --- بخش جدید: انتقال سبد خرید مهمان به کاربر ---
-        session_key = request.session.session_key
-        if session_key:
-            try:
-                # سبد خریدی که کاربر مهمان ساخته但没有 یوزر دارد
-                guest_cart = Cart.objects.get(session_key=session_key, user__isnull=True)
-                # اگر کاربر قبلا سبد خرید داشت، می‌توانید ادغام کنید یا جایگزین کنید
-                # اینجا سبد مهمان را به یوزر اختصاص می‌دهیم
-                guest_cart.user = user
-                guest_cart.session_key = None  # سشن را پاک می‌کنیم
-                guest_cart.save()
-            except Cart.DoesNotExist:
-                pass
-        # ---------------------------------------------
+        # ------------------------------
+        # Merge Guest Cart
+        # ------------------------------
 
-        refresh = RefreshToken.for_user(user)
+        cart_token = request.data.get(
+            "cart_token"
+        )
 
-        return Response({
-            "message": "ورود موفقیت آمیز بود.",
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "is_new_user": created
-        }, status=status.HTTP_200_OK)
+        if cart_token:
 
+            guest_cart = Cart.objects.filter(
+                cart_token=cart_token,
+                user__isnull=True
+            ).first()
+
+            if guest_cart:
+
+                user_cart, _ = Cart.objects.get_or_create(
+                    user=user
+                )
+
+                for guest_item in guest_cart.items.all():
+
+                    user_item = user_cart.items.filter(
+                        product=guest_item.product
+                    ).first()
+
+                    if user_item:
+                        user_item.quantity += (
+                            guest_item.quantity
+                        )
+
+                        user_item.save(
+                            update_fields=["quantity"]
+                        )
+
+                    else:
+                        guest_item.cart = user_cart
+                        guest_item.save(
+                            update_fields=["cart"]
+                        )
+
+                guest_cart.delete()
+
+        # ------------------------------
+
+        refresh = RefreshToken.for_user(
+            user
+        )
+
+        return Response(
+            {
+                "message":
+                    "ورود موفقیت آمیز بود.",
+
+                "access":
+                    str(refresh.access_token),
+
+                "refresh":
+                    str(refresh),
+
+                "is_new_user":
+                    created
+            },
+            status=status.HTTP_200_OK
+        )
 
 class ProfileView(APIView):
     permission_classes = [
@@ -157,3 +209,22 @@ class ProfileView(APIView):
             serializer.data,
             status=status.HTTP_200_OK
         )
+
+
+
+
+class ContactViewSet(viewsets.ModelViewSet):
+    queryset = ContactInfo.objects.all()
+    serializer_class = ContactInfoSerializer
+
+    @Action(detail=True, methods=['get'])
+    def get_social_links(self, request, pk=None):
+        contact = self.get_object()
+        social_links = SocialLink.objects.filter(contact=contact)
+        serializer = SocialLinkSerializer(social_links, many=True)
+        return Response(serializer.data)
+
+
+class SocialLinkViewSet(viewsets.ModelViewSet):
+    queryset = SocialLink.objects.all()
+    serializer_class = SocialLinkSerializer

@@ -204,6 +204,22 @@ Django = ">=3.2"
 django-js-asset = ">=2.0"
 
 [[package]]
+name = "django-cors-headers"
+version = "4.9.0"
+description = "django-cors-headers is a Django application for handling the server headers required for Cross-Origin Resource Sharing (CORS)."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_cors_headers-4.9.0-py3-none-any.whl", hash = "sha256:15c7f20727f90044dcee2216a9fd7303741a864865f0c3657e28b7056f61b449"},
+    {file = "django_cors_headers-4.9.0.tar.gz", hash = "sha256:fe5d7cb59fdc2c8c646ce84b727ac2bca8912a247e6e68e1fb507372178e59e8"},
+]
+
+[package.dependencies]
+asgiref = ">=3.6"
+django = ">=4.2"
+
+[[package]]
 name = "django-jazzmin"
 version = "3.0.4"
 description = "Drop-in theme for django admin, that utilises AdminLTE 3 & Bootstrap 5 to make yo' admin look jazzy"
@@ -235,6 +251,24 @@ django = ">=4.2"
 
 [package.extras]
 tests = ["coverage"]
+
+[[package]]
+name = "django-mptt"
+version = "0.18.0"
+description = "Utilities for implementing Modified Preorder Tree Traversal with your Django Models and working with trees of Model instances."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_mptt-0.18.0-py3-none-any.whl", hash = "sha256:bfa3f01627e3966a1df901aeca74570a3e933e66809ebf58d9df673e63627afb"},
+    {file = "django_mptt-0.18.0.tar.gz", hash = "sha256:cf5661357ff22bc64e20d3341c26e538aa54583aea0763cfe6aaec0ab8e3a8ee"},
+]
+
+[package.dependencies]
+django-js-asset = "*"
+
+[package.extras]
+tests = ["coverage[toml]", "mock-django"]
 
 [[package]]
 name = "django-resized"
@@ -563,4 +597,4 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "9e98f8aff1828b42ea51ffc3843777e297a62a1ba7dc3b9915bd4af6ddcde549"
+content-hash = "615bd5c769cf8aaa0403595d3ae2d6c02e01ef17f4333abec069796c78579ce2"

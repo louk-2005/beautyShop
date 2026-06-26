@@ -1,8 +1,9 @@
 from rest_framework import serializers
+from django.db.models import F, Sum
 
 from .models import Cart, CartItem
 from products.serializers import ProductSerializer
-from django.db.models import F, Sum
+
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
@@ -24,7 +25,6 @@ class CartItemSerializer(serializers.ModelSerializer):
         return 0
 
 
-
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
 
@@ -35,20 +35,32 @@ class CartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = [
             "id",
-            "session_key",
+            "cart_token",
             "user",
             "items",
             "total_price",
             "total_items",
             "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "cart_token",
+            "total_price",
+            "total_items",
+            "created_at",
+            "updated_at",
         ]
 
     def get_total_price(self, obj):
-        return obj.items.aggregate(
+        result = obj.items.aggregate(
             total=Sum(F("quantity") * F("product__price"))
-        )["total"] or 0
+        )
+
+        return result["total"] or 0
 
     def get_total_items(self, obj):
-        return obj.items.aggregate(
+        result = obj.items.aggregate(
             total=Sum("quantity")
-        )["total"] or 0
+        )
+
+        return result["total"] or 0

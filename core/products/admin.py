@@ -5,8 +5,11 @@ from django.urls import reverse
 from django.db.models import Count
 from django.contrib import messages
 
+
+from mptt.admin import DraggableMPTTAdmin
+
 # your files
-from .models import Category, Product, ProductImages
+from .models import Category, Product, ProductImages,ProductMessage
 
 
 # ----------------------------------------------------------------------
@@ -33,9 +36,10 @@ class ProductImagesInline(admin.TabularInline):
 # Category Admin
 # ----------------------------------------------------------------------
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(DraggableMPTTAdmin):
     # حذف created_at چون در مدل وجود ندارد
-    list_display = ('name', 'parent', 'image_thumbnail', 'product_count')
+    list_display = ('tree_actions', 'indented_title','name', 'parent', 'image_thumbnail', 'product_count')
+    list_display_links = ('indented_title',)
     list_filter = ('parent',)
     search_fields = ('name',)
     readonly_fields = ('image_preview',)
@@ -97,9 +101,10 @@ class ProductAdmin(admin.ModelAdmin):
         'category',
         'image_thumbnail',
         'price_display',
+        "avg_rating_display",
         'stock_status',
         'gallery_count',
-        'created_at'  # این فیلد در مدل Product وجود دارد
+        'created_at'
     )
     list_filter = ('category', 'created_at')
     search_fields = ('name', 'description', 'category__name')
@@ -133,7 +138,23 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     # --- متدهای نمایش ---
-
+    def price_display(self, obj):
+        if obj.first_price and obj.first_price > obj.price:
+            discount = int((1 - obj.price / obj.first_price) * 100)
+            return format_html(
+                '<span style="text-decoration: line-through; color: #999; font-size: 0.85em;">{}</span> <span style="color: green; font-weight: bold;">{}</span> <span style="background: red; color: white; padding: 2px 5px; border-radius: 4px; font-size: 0.8em;">{}%</span>',
+                f"{obj.first_price:,.0f}", f"{obj.price:,.0f} ", discount
+            )
+        return f"{obj.price:,.0f} تومان"
+    def avg_rating_display(self, obj):
+        avg = obj.average_rating or 0
+        print(avg)
+        full_star = '<span style="color: gold;">★</span>'
+        empty_star = '<span style="color: #ccc;">★</span>'
+        stars = full_star * int(avg) + empty_star * (5 - int(avg))
+        return format_html(
+            stars,
+            round(avg, 1))
     def image_thumbnail(self, obj):
         if obj.image:
             return format_html(
@@ -154,8 +175,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     main_image_preview.short_description = "پیش‌نمایش تصویر اصلی"
 
-    def price_display(self, obj):
-        return f"{obj.price:,.0f} تومان"
+
 
     price_display.short_description = "قیمت"
     price_display.admin_order_field = 'price'
@@ -252,3 +272,11 @@ class ProductImagesAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('product')
+
+
+
+class ProductMessageAdmin(DraggableMPTTAdmin):
+    list_display = ('tree_actions', 'indented_title','name','email','is_shown',)
+    list_display_links = ('indented_title',)
+admin.site.register(ProductMessage, ProductMessageAdmin)
+

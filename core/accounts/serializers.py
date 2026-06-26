@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import User, OTP
+from .models import User, OTP,ContactInfo,SocialLink
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -58,3 +58,16 @@ class VerifyOTPSerializer(serializers.Serializer):
         attrs["otp"] = otp
 
         return attrs
+
+
+
+class ContactInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactInfo
+        fields = '__all__'
+
+
+class SocialLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SocialLink
+        fields = '__all__'

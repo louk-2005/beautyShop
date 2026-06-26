@@ -3,7 +3,8 @@ from rest_framework import serializers
 from .models import (
     Category,
     Product,
-    ProductImages
+    ProductImages,
+    ProductMessage
 )
 
 
@@ -38,3 +39,17 @@ class ProductSerializer(serializers.ModelSerializer):
             "images",
             "created_at",
         ]
+
+
+
+
+class ProductMessageSerializer(serializers.ModelSerializer):
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductMessage
+        fields = '__all__'
+
+    def get_replies(self, obj):
+        descendants = obj.get_descendants().filter(is_shown=True).order_by('created_at')
+        return ProductMessageSerializer(descendants, many=True, context=self.context).data

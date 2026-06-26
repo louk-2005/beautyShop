@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
-
+from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'django_resized',
     'ckeditor',
     'ckeditor_uploader',
+    'corsheaders',
+    'mptt',
 
     # apps
     'accounts.apps.AccountsConfig',
@@ -54,6 +56,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -95,6 +98,13 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -127,7 +137,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'static'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -194,7 +205,7 @@ KAVENEGAR_API_KEY = '4F48396C70454E7A4276445A732B506636624E547456665058596B47617
 SMS_SENDER_NUMBER = '2000660110'
 
 
-
+#zarinpal
 
 ZARINPAL_MERCHANT_ID = "123e4567-e89b-12d3-a456-426614174000"
 
@@ -210,4 +221,42 @@ ZARINPAL_STARTPAY_URL = (
     "https://sandbox.zarinpal.com/pg/StartPay/"
 )
 
-SITE_URL = "http://127.0.0.1:8000/api/v1/"
+SITE_URL = "https://beaut.runflare.run/api/v1/"
+
+
+
+# cors
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://beau.runflare.run",
+    "https://beaut.runflare.run",
+    "http://beau.runflare.run",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://beaut.runflare.run",
+    "http://beau.runflare.run",
+    "https://beau.runflare.run",
+
+]
+CORS_ALLOW_ALL_ORIGINS = False  # 👈 خیلی مهم
+
+
+#jwt
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+
+
+

@@ -1,4 +1,3 @@
-# django files
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
@@ -14,12 +13,12 @@ from .models import Cart, CartItem
 # ----------------------------------------------------------------------
 class CartItemInline(admin.TabularInline):
     model = CartItem
-    extra = 0  # تغییر به 0 تا دکمه "افزودن آیتم جدید" مزاحم نباشد (اختیاری)
+    extra = 0  # عدم نمایش ردیف‌های اضافی خالی
     fields = ('product_link', 'quantity', 'item_total_price')
     readonly_fields = ('product_link', 'item_total_price')
 
     def item_total_price(self, obj):
-        # محاسبه قیمت هر آیتم (تعداد * قیمت محصول)
+        # محاسبه قیمت کل آیتم (تعداد * قیمت واحد)
         if obj.product and obj.product.price:
             price = obj.product.price * obj.quantity
             return format_html("<span style='direction: ltr; display: inline-block;'>{} تومان</span>", f"{price:,.0f}")
@@ -31,6 +30,7 @@ class CartItemInline(admin.TabularInline):
         if obj.product:
             try:
                 # لینک به صفحه ویرایش محصول در ادمین
+                # توجه: مطمئن شوید که نام اپلیکیشن محصولات 'products' است
                 url = reverse("admin:products_product_change", args=[obj.product.id])
                 return format_html('<a href="{}" target="_blank">{}</a>', url, obj.product.name)
             except Exception:
@@ -40,7 +40,6 @@ class CartItemInline(admin.TabularInline):
     product_link.short_description = "محصول"
 
     def has_add_permission(self, request, obj=None):
-        # امکان افزودن دستی آیتم در اینلاین (در صورت نیاز می‌توانید True کنید)
         return True
 
 
@@ -51,20 +50,23 @@ class CartItemInline(admin.TabularInline):
 class CartAdmin(admin.ModelAdmin):
     list_display = (
         'id_display',
+        'cart_token_display',
         'user_info',
-        'items_count_display',  # تغییر نام برای جلوگیری از تداخل با متد
+        'items_count_display',
         'total_price_display',
         'created_at'
     )
-    list_filter = ('created_at',)
-    search_fields = ('id', 'user__phone_number', 'user__email', 'session_key')
-    readonly_fields = ('created_at', 'total_price_display', 'items_count_display', 'id_display')
+    list_filter = ('created_at', 'user')
+    # جستجو بر اساس توکن سبد، نام کاربر و آیدی
+    search_fields = ('cart_token', 'user__phone_number', 'user__email', 'id')
+    readonly_fields = (
+    'created_at', 'updated_at', 'total_price_display', 'items_count_display', 'id_display', 'cart_token_display')
     inlines = [CartItemInline]
     date_hierarchy = 'created_at'
 
     fieldsets = (
         ('اطلاعات سبد', {
-            'fields': ('id_display', 'user', 'session_key', 'created_at')
+            'fields': ('id_display', 'cart_token_display', 'user', 'created_at', 'updated_at')
         }),
         ('خلاصه مالی', {
             'fields': ('items_count_display', 'total_price_display'),
@@ -77,7 +79,15 @@ class CartAdmin(admin.ModelAdmin):
     def id_display(self, obj):
         return str(obj.id)
 
-    id_display.short_description = "شناسه یکتا"
+    id_display.short_description = "شناسه (ID)"
+
+    # متدی که باعث خطا می‌شد - اصلاح شده
+    def cart_token_display(self, obj):
+        # نمایش بخشی از توکن برای خوانایی بهتر
+        token_str = str(obj.cart_token)
+        return format_html("<code>{}</code>", token_str)
+
+    cart_token_display.short_description = "توکن سبد"
 
     def user_info(self, obj):
         if obj.user:
@@ -88,12 +98,16 @@ class CartAdmin(admin.ModelAdmin):
                 model_name = user_model._meta.model_name
 
                 url = reverse(f"admin:{app_label}_{model_name}_change", args=[obj.user.id])
+                # نمایش شماره تماس به عنوان لینک
                 return format_html('<a href="{}">{}</a>', url, obj.user.phone_number)
             except Exception:
                 return obj.user.phone_number
-        elif obj.session_key:
-            return format_html("<span style='color:#999;'>مهمان (سشن: {}...)</span>", obj.session_key[:8])
-        return "مهمان"
+        else:
+            # اگر کاربر لاگین نیست (مهمان)، نمایش توکن
+            return format_html(
+                "<span style='color:#777;'>{}</span>",
+                "مهمان"
+            )
 
     user_info.short_description = "کاربر"
     user_info.admin_order_field = 'user'
@@ -108,7 +122,7 @@ class CartAdmin(admin.ModelAdmin):
     items_count_display.short_description = "تعداد اقلام"
 
     def total_price_display(self, obj):
-        # روش بهینه برای محاسبه جمع کل (یک کوئری به دیتابیس)
+        # محاسبه جمع کل با استفاده از annotates برای بهینه‌سازی
         total = obj.items.annotate(
             item_total=F('quantity') * F('product__price')
         ).aggregate(sum_total=Sum('item_total'))['sum_total']
@@ -134,7 +148,7 @@ class CartAdmin(admin.ModelAdmin):
 class CartItemAdmin(admin.ModelAdmin):
     list_display = ('cart_link', 'product', 'quantity', 'item_total_display', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('product__name', 'cart__id')
+    search_fields = ('product__name', 'cart__cart_token')
     readonly_fields = ('item_total_display', 'created_at')
 
     def item_total_display(self, obj):
@@ -148,9 +162,9 @@ class CartItemAdmin(admin.ModelAdmin):
     def cart_link(self, obj):
         try:
             url = reverse("admin:cart_cart_change", args=[obj.cart.id])
-            return format_html('<a href="{}">سبد {}</a>', url, str(obj.cart.id)[:8])
+            return format_html('<a href="{}">سبد {}</a>', url, str(obj.cart.cart_token)[:8])
         except Exception:
-            return str(obj.cart.id)
+            return str(obj.cart.cart_token)
 
     cart_link.short_description = "سبد خرید"
 

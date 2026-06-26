@@ -37,7 +37,7 @@ urlpatterns = [
     path('api/v1/products/', include('products.urls', namespace='products')),
     path('api/v1/cart/', include('cart.urls', namespace='cart')),
     path('api/v1/orders/', include('orders.urls', namespace='orders')),
-    path('api/v1/contactUs', include('contactUs.urls', namespace='contactUs')),
+    path('api/v1/contactUs/', include('contactUs.urls', namespace='contactUs')),
     path('api/v1/site/assets/', include('siteAssets.urls', namespace='assets')),
 
 ]

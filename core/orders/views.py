@@ -138,8 +138,8 @@ class StartPaymentView(APIView):
             )
 
         callback_url = (
-            f"{settings.SITE_URL}"
-            f"/api/orders/verify-payment/"
+
+            f"http://localhost:5173/result/payment/"
         )
 
         payload = {
@@ -190,7 +190,6 @@ class StartPaymentView(APIView):
         })
 
 
-
 class VerifyPaymentView(APIView):
 
     def get(self, request):
@@ -239,6 +238,20 @@ class VerifyPaymentView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # --- شروع بخش کاهش موجودی ---
+
+        # دریافت آیتم‌های سفارش
+        order_items = order.items.all()  # یا order.items.select_related('product').all()
+
+        for item in order_items:
+            product = item.product
+            # کاهش تعداد موجودی
+            product.stock -= item.quantity
+
+            product.save()
+
+        # --- پایان بخش کاهش موجودی ---
 
         order.status = Order.Status.PAID
         order.payment_ref_id = result["data"]["ref_id"]
